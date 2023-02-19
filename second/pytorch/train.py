@@ -657,7 +657,7 @@ def train(config_path,
                         torchplus.train.save_models(model_dir, { "amp_optimizer": scaler },
                                                 net.get_global_step())
                     
-                    send_mail("9849998776@vtext.com", "step " + str(global_step) + "\nstarting eval")
+                    send_mail("8589146150@vtext.com", "step " + str(global_step) + "\nstarting eval")
         
                     if eval_name:
                         print(eval_name)
@@ -676,7 +676,7 @@ def train(config_path,
                             model_logging.log_text("Evaluation {}".format(k), global_step)
                             model_logging.log_text(v, global_step)
                         log_str = model_logging.log_metrics(result_dict["detail"], global_step)
-                        send_mail("9849998776@vtext.com", log_str)
+                        send_mail("8589146150@vtext.com", log_str)
 
                     else:
                         net.eval()
@@ -709,7 +709,7 @@ def train(config_path,
                             model_logging.log_text("Evaluation {}".format(k), global_step)
                             model_logging.log_text(v, global_step)
                         log_str = model_logging.log_metrics(result_dict["detail"], global_step)
-                        send_mail("9849998776@vtext.com", log_str)
+                        send_mail("8589146150@vtext.com", log_str)
                         with open(result_path_step / "result.pkl", 'wb') as f:
                             pickle.dump(detections, f)
                         net.train()
