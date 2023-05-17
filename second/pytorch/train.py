@@ -534,6 +534,13 @@ def train(config_path,
         while True:
             if clear_metrics_every_epoch:
                 net.clear_metrics()
+                print("##############################################")
+                print("clearing metrics: Starting a new epoch")
+                print("##############################################")
+            else:
+                print("##############################################")
+                print("NOT clearing metrics: Continuing from previous epoch")
+                print("##############################################")
             t1 = time.time()
             for example in dataloader:
                 # print("getting next datapoints:", time.time() - t1)
@@ -657,7 +664,7 @@ def train(config_path,
                         torchplus.train.save_models(model_dir, { "amp_optimizer": scaler },
                                                 net.get_global_step())
                     
-                    send_mail("8589146150@vtext.com", "step " + str(global_step) + "\nstarting eval")
+                    send_mail("8589146150@tmomail.net", "step " + str(global_step) + "\nstarting eval")
         
                     if eval_name:
                         print(eval_name)
@@ -676,7 +683,7 @@ def train(config_path,
                             model_logging.log_text("Evaluation {}".format(k), global_step)
                             model_logging.log_text(v, global_step)
                         log_str = model_logging.log_metrics(result_dict["detail"], global_step)
-                        send_mail("8589146150@vtext.com", log_str)
+                        send_mail("8589146150@tmomail.net", log_str)
 
                     else:
                         net.eval()
@@ -709,7 +716,7 @@ def train(config_path,
                             model_logging.log_text("Evaluation {}".format(k), global_step)
                             model_logging.log_text(v, global_step)
                         log_str = model_logging.log_metrics(result_dict["detail"], global_step)
-                        send_mail("8589146150@vtext.com", log_str)
+                        send_mail("8589146150@tmomail.net", log_str)
                         with open(result_path_step / "result.pkl", 'wb') as f:
                             pickle.dump(detections, f)
                         net.train()
@@ -730,7 +737,7 @@ def train(config_path,
         if train_cfg.enable_mixed_precision:
             torchplus.train.save_models(model_dir, { "amp_optimizer": scaler },
                                     net.get_global_step())
-        send_mail("8589146150@vtext.com", "step: " + str(net.get_global_step()) + "error")
+        send_mail("8589146150@tmomail.net", "step: " + str(net.get_global_step()) + "error")
         # print(str(e.message))
         # input("press enter")
         raise e

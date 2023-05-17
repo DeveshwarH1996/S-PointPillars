@@ -15,6 +15,7 @@ from torchplus.nn import Empty
 from torchplus.tools import change_default_args
 import numpy as np 
 from second.pytorch.models.pointnet_util import PointNetSetAbstractionMsg, PointNetSetAbstraction
+from second.pytorch.models.pointpillars import PFNLayer
 
 
 @register_vfe
@@ -48,6 +49,20 @@ class PillarFeatureNet2_MSG(nn.Module):
         #Defining the setabstraction layer and feature propogation layer
         self.sa0 = PointNetSetAbstractionMsg(10, [0.32, 0.36, 0.4], [6, 8, 10], 6, [[16, 32, 48, 64], [32, 32, 48, 64], [32, 64, 96, 128]])   
         self.sa1 = PointNetSetAbstraction(None, None, None, 64+64+128 + 3, [512, 256, 128], True)
+
+        num_filters = [num_input_features] + list(num_filters)
+        pfn_layers = []
+        for i in range(len(num_filters) - 1):
+            in_filters = num_filters[i]
+            out_filters = num_filters[i + 1]
+            if i < len(num_filters) - 2:
+                last_layer = False
+            else:
+                last_layer = True
+            pfn_layers.append(
+                PFNLayer(
+                    in_filters, out_filters, use_norm, last_layer=last_layer))
+        self.pfn_layers = nn.ModuleList(pfn_layers)
 
         # Need pillar (voxel) size and x/y offset in order to calculate pillar offset
         self.vx = voxel_size[0]
@@ -87,10 +102,21 @@ class PillarFeatureNet2_MSG(nn.Module):
         mask = get_paddings_indicator(num_voxels, voxel_count, axis=0)
         mask = torch.unsqueeze(mask, -1).type_as(features)
         features *= mask
+        #Create another mask and anti_mask, features_new = features*mask features_pfn = features*anti_mask
+
+        Threshold = 50
+
+        pfn_features = features[(num_voxels <= Threshold)]
 
         features = features.permute(0, 2, 1)
-        features_points = features[:, :3, :]
-        features_data = features[:, 3:, :]
+        ###
+        '''
+        pfn_features = features[num_voxels<=10]
+        features_points = features_points[(num_voxels>10)]
+        features_data = features_data[(num_voxels>10)]
+        '''
+        features_points = features[(num_voxels > Threshold), :3, :]
+        features_data = features[(num_voxels > Threshold), 3:, :]
 
         # print("features_points shape before processing:", features_points.shape)
         
@@ -103,13 +129,18 @@ class PillarFeatureNet2_MSG(nn.Module):
         features_data = features_data.squeeze()
         # print("features_data shape after squeezing:", features_data.shape)
         
-        # # Forward pass through PFNLayers
-        # for pfn in self.pfn_layers:
-        #     features = pfn(features)m - Rules and Tactics	Apr 30
+        # Forward pass through PFNLayers
+        for pfn in self.pfn_layers:
+            pfn_features = self.PFN_split_and_run(pfn_features, pfn, 5)
+        
+        pfn_features = pfn_features.squeeze()
 
+        features = torch.zeros(features.shape[0], features_data.shape[1]).to(device=features_data.device, dtype=features_data.dtype)
+        features[(num_voxels > Threshold)] = features_data
+        features[(num_voxels <= Threshold)] = pfn_features
         # print("\n")
 
-        return features_data
+        return features
 
     def split_and_run(self, input_points, input_data, model, num_sections):
         """
@@ -137,7 +168,22 @@ class PillarFeatureNet2_MSG(nn.Module):
             points_outs.append(p_out)
             data_outs.append(d_out)
         
-        points_cat = torch.cat(points_outs, dim=0)
-        data_cat = torch.cat(data_outs, dim=0)
+        points_outs = torch.cat(points_outs, dim=0)
+        data_outs = torch.cat(data_outs, dim=0)
 
-        return points_cat, data_cat
+        return points_outs, data_outs
+
+    def PFN_split_and_run(self, input_points, model, num_sections):
+        """
+        splits the input data into sections, runs the model on those batches, returns the concatenated outputs
+        """
+        points_sections = torch.chunk(input_points, num_sections)
+
+        points_outs = []
+        for i in range(len(points_sections)):
+            p = points_sections[i]
+            points_outs.append(model(p))
+        
+        points_outs = torch.cat(points_outs, dim=0)
+
+        return points_outs
