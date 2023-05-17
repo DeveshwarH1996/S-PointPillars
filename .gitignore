@@ -115,3 +115,4 @@ model_dirs/
 second/*.png
 model_dir/
 pp2_model_dir*/
+wandb/
